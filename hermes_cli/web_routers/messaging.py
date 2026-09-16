@@ -33,7 +33,7 @@ from hermes_cli.web_server_messaging import (
 )
 from hermes_cli.web_routers._common import http_failure
 from hermes_cli.web_models import (
-    MessagingPlatformUpdate, TelegramOnboardingApply, TelegramOnboardingStart,
+    MessagingPlatformUpdate, QzhuliBindStart, TelegramOnboardingApply, TelegramOnboardingStart,
     WhatsAppOnboardingApply, WhatsAppOnboardingStart,
 )
 
@@ -928,3 +928,56 @@ async def test_messaging_platform(platform_id: str, profile: Optional[str] = Non
     if payload.get("error_message"):
         return result(False, payload["error_message"])
     return result(False, "Setup looks complete, but the gateway has not reported a connection yet. Restart the gateway.")
+
+
+# ── hermes-dev: Qzhuli 扫码绑定端点（插件平台 qzhuli，desktop 设置界面入口）────
+# 仅做两件事：生成绑定二维码内容（bind_key）与代理轮询 Q助理 check_bind_status。
+# 凭据写入复用上方 PUT /api/messaging/platforms/{id}，不在此处重复写 .env 逻辑。
+_QZHULI_CLIENT_HOSTS = {"release": "client.qzhuli.com", "dev": "test.client.qzhuli.com"}
+_QZHULI_BIND_TIMEOUT_S = 10.0
+
+
+def _qzhuli_check_bind_status_sync(url: str) -> dict[str, Any]:
+    import httpx
+
+    with httpx.Client(timeout=httpx.Timeout(_QZHULI_BIND_TIMEOUT_S)) as client:
+        response = client.get(url, headers={"Accept": "application/json"})
+        response.raise_for_status()
+        return response.json()
+
+
+@router.post("/api/messaging/qzhuli/bind/start")
+async def start_qzhuli_bind(body: QzhuliBindStart) -> dict[str, Any]:
+    import uuid
+
+    environment = (body.environment or "release").strip().lower()
+    if environment not in _QZHULI_CLIENT_HOSTS:
+        raise HTTPException(status_code=400, detail=f"Unknown Qzhuli environment: {environment}")
+    bind_key = uuid.uuid4().hex
+    qr_payload = json.dumps({"type": "imnut_bind", "key": bind_key, "id": 2}, separators=(",", ":"))
+    return {"bind_key": bind_key, "qr_payload": qr_payload, "environment": environment}
+
+
+@router.get("/api/messaging/qzhuli/bind/status")
+async def get_qzhuli_bind_status(bind_key: str, environment: str = "release") -> dict[str, Any]:
+    environment = environment.strip().lower()
+    if environment not in _QZHULI_CLIENT_HOSTS:
+        raise HTTPException(status_code=400, detail=f"Unknown Qzhuli environment: {environment}")
+    url = (
+        f"https://{_QZHULI_CLIENT_HOSTS[environment]}/aimachine/check_bind_status"
+        f"?bind_key={urllib.parse.quote(bind_key, safe='')}"
+    )
+    try:
+        payload = await asyncio.to_thread(_qzhuli_check_bind_status_sync, url)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Qzhuli bind status check failed: {exc}") from exc
+    data = payload.get("data") or payload
+    status = str(data.get("status") or "").strip()
+    if status == "1":
+        conv_id = str(data.get("conversation_id") or data.get("conv_id") or "").strip()
+        cid = str(data.get("cid") or "").strip()
+        bind_token = str(data.get("bind_token") or data.get("token") or "").strip()
+        if not (conv_id and cid and bind_token):
+            raise HTTPException(status_code=502, detail="Qzhuli bind response missing credentials.")
+        return {"status": "bound", "conversation_id": conv_id, "cid": cid, "bind_token": bind_token}
+    return {"status": "pending"}

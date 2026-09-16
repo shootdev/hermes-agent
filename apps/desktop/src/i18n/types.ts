@@ -1948,6 +1948,21 @@ export interface Translations {
       savedRestarting: string
       savedRestartFailed: (detail: string) => string
     }
+    // hermes-dev: Qzhuli 扫码绑定（插件平台 qzhuli，desktop 设置界面入口）
+    qzhuliBind: {
+      quickSetup: string
+      quickHelp: string
+      createWithQr: string
+      starting: string
+      scanHint: string
+      waiting: string
+      stillWaiting: (detail: string) => string
+      connected: string
+      saving: string
+      saved: string
+      replaceWarning: string
+      saveFailed: (detail: string) => string
+    }
     fieldCopy: Record<string, { label?: string; help?: string; placeholder?: string }>
     platformIntro: Record<string, string>
   }

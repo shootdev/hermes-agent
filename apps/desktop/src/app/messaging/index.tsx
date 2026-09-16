@@ -43,6 +43,7 @@ import { SettingsProfileScope } from '../settings/profile-scope'
 import type { SetStatusbarItemGroup } from '../shell/statusbar-controls'
 
 import { PlatformAvatar } from './platform-icon'
+import { QzhuliBindSetup } from './qzhuli-setup'
 import { TelegramQrSetup } from './telegram-qr-setup'
 
 interface MessagingViewProps extends React.ComponentProps<'section'> {
@@ -776,6 +777,15 @@ function PlatformDetail({
           <SectionTitle>{m.telegramQr.quickSetup}</SectionTitle>
           <div className="mt-3">
             <TelegramQrSetup onApplied={onTelegramApplied} platform={platform} scopeProfile={scopeProfile} />
+          </div>
+        </section>
+      )}
+
+      {platform.id === 'qzhuli' && (
+        <section>
+          <SectionTitle>{m.qzhuliBind.quickSetup}</SectionTitle>
+          <div className="mt-3">
+            <QzhuliBindSetup platform={platform} scopeProfile={scopeProfile} />
           </div>
         </section>
       )}

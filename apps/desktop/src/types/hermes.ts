@@ -363,6 +363,17 @@ export interface TelegramOnboardingApplyResponse {
   restart_started?: boolean
 }
 
+// -- Qzhuli QR bind (hermes-dev: desktop 设置界面入口，插件平台 qzhuli) ------
+export interface QzhuliBindStartResponse {
+  bind_key: string
+  environment: string
+  qr_payload: string
+}
+
+export type QzhuliBindStatusResponse =
+  | { bind_token: string; cid: string; conversation_id: string; status: 'bound' }
+  | { status: 'pending' }
+
 // -- Webhooks (subscription CRUD) --------------------------------------------
 // Incoming HTTP event routes served by the webhook gateway platform. Backed by
 // the same JSON store the CLI/dashboard use; per-route HMAC secrets are

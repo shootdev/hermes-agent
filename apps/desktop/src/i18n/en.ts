@@ -2185,6 +2185,22 @@ export const en: Translations = {
       savedRestarting: 'Telegram saved; gateway restarting…',
       savedRestartFailed: detail => `Telegram saved; gateway restart failed${detail}`
     },
+    // hermes-dev: Qzhuli 扫码绑定（插件平台 qzhuli，desktop 设置界面入口）
+    qzhuliBind: {
+      quickSetup: 'Quick setup',
+      quickHelp:
+        'Link Hermes to your Qzhuli (Q助理) account: scan the QR with the Qzhuli app and confirm the binding.',
+      createWithQr: 'Connect with QR',
+      starting: 'Starting…',
+      scanHint: 'Open the Qzhuli app, scan the QR code, and confirm the binding.',
+      waiting: 'Waiting for Qzhuli…',
+      stillWaiting: detail => `Still waiting for Qzhuli. Retrying after: ${detail}`,
+      connected: 'Connected',
+      saving: 'Saving credentials…',
+      saved: 'Qzhuli linked. Restart the gateway to start exchanging messages.',
+      replaceWarning: 'Qzhuli credentials are already configured. A new QR setup will replace them when saved.',
+      saveFailed: detail => `Qzhuli setup failed: ${detail}`
+    },
     fieldCopy: {
       TELEGRAM_BOT_TOKEN: {
         label: 'Bot token',

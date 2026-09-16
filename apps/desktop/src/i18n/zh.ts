@@ -2337,6 +2337,21 @@ export const zh = defineLocale({
       savedRestarting: 'Telegram 已保存；网关正在重启…',
       savedRestartFailed: detail => `Telegram 已保存；网关重启失败${detail}`
     },
+    // hermes-dev: Qzhuli 扫码绑定（插件平台 qzhuli，desktop 设置界面入口）
+    qzhuliBind: {
+      quickSetup: '快速连接',
+      quickHelp: '将 Hermes 与你的 Q助理 账号绑定：用 Q助理 App 扫描二维码并确认绑定。',
+      createWithQr: '扫码连接',
+      starting: '启动中…',
+      scanHint: '打开 Q助理 App，扫描二维码并确认绑定。',
+      waiting: '等待 Q助理 确认…',
+      stillWaiting: detail => `仍在等待 Q助理 确认。${detail} 后重试`,
+      connected: '已连接',
+      saving: '正在保存凭据…',
+      saved: 'Q助理 已绑定。重启 gateway 后即可收发消息。',
+      replaceWarning: 'Q助理 凭据已配置。新的扫码绑定将在保存时替换当前凭据。',
+      saveFailed: detail => `Q助理 绑定失败：${detail}`
+    },
     fieldCopy: {
       TELEGRAM_BOT_TOKEN: {
         label: 'Bot 令牌',

@@ -54,6 +54,10 @@ class MessagingPlatformUpdate(BaseModel):
 class TelegramOnboardingStart(BaseModel):
     bot_name: Optional[str] = None
 
+# hermes-dev: Qzhuli 扫码绑定（desktop 设置界面入口，插件平台 qzhuli）
+class QzhuliBindStart(BaseModel):
+    environment: Optional[str] = None
+
 class TelegramOnboardingApply(BaseModel):
     allowed_user_ids: List[str]
     profile: Optional[str] = None

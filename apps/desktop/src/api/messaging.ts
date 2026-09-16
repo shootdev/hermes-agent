@@ -4,6 +4,8 @@ import type {
   MessagingPlatformUpdate,
   PairingResponse,
   PairingUser,
+  QzhuliBindStartResponse,
+  QzhuliBindStatusResponse,
   TelegramOnboardingApplyResponse,
   TelegramOnboardingStartResponse,
   TelegramOnboardingStatusResponse,
@@ -99,6 +101,33 @@ export function cancelTelegramOnboarding(pairingId: string, profile?: null | str
     ...profileScoped(profile),
     path: `/api/messaging/telegram/onboarding/${encodeURIComponent(pairingId)}`,
     method: 'DELETE'
+  })
+}
+
+// -- Qzhuli QR bind (hermes-dev: desktop 设置界面入口，插件平台 qzhuli) -------
+// 轮询由 backend 代理（renderer 不直连 Q助理，避免 CORS）；绑定成功后凭据
+// 通过 updateMessagingPlatform 写入 ~/.hermes/.env。
+
+export function startQzhuliBind(
+  environment: string,
+  profile?: null | string
+): Promise<QzhuliBindStartResponse> {
+  return hermesApi<QzhuliBindStartResponse>({
+    ...profileScoped(profile),
+    path: '/api/messaging/qzhuli/bind/start',
+    method: 'POST',
+    body: { environment }
+  })
+}
+
+export function getQzhuliBindStatus(
+  bindKey: string,
+  environment: string,
+  profile?: null | string
+): Promise<QzhuliBindStatusResponse> {
+  return hermesApi<QzhuliBindStatusResponse>({
+    ...profileScoped(profile),
+    path: `/api/messaging/qzhuli/bind/status?bind_key=${encodeURIComponent(bindKey)}&environment=${encodeURIComponent(environment)}`
   })
 }
 
