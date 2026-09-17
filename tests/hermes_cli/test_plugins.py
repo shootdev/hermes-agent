@@ -439,6 +439,49 @@ class TestPluginDiscovery:
         assert mgr._aux_tasks == {}
         assert mgr._slack_action_handlers == []
 
+    def test_new_plugin_after_discovery_is_auto_discovered(self, tmp_path, monkeypatch):
+        """A plugin copied into the home AFTER the first sweep is picked up by a plain
+        ``discover_and_load()`` — no force, no restart.
+
+        Regression: ``discover_and_load`` early-returned on ``_discovered`` forever, so a
+        long-lived process (multiplexer gateway) that started before a profile's plugin
+        existed would silently strand the new platform until process restart — the qzhuli
+        "binding succeeded but UI says needs-restart" class of bug.
+        """
+        home = tmp_path / "hermes_test"
+        plugins_dir = home / "plugins"
+        _make_plugin_dir(plugins_dir, "alpha", home=home)
+        monkeypatch.setenv("HERMES_HOME", str(home))
+
+        mgr = PluginManager()
+        mgr.discover_and_load()
+        assert mgr._discovered is True
+        assert any(k.startswith("alpha") for k in mgr._plugins)
+        assert mgr._plugin_dirs_fingerprint is not None
+
+        # Simulate the profile gaining a plugin after the gateway already started:
+        # a second sweep without force must notice the new directory.
+        _make_plugin_dir(plugins_dir, "beta", home=home)
+        mgr.discover_and_load()
+        assert any(k.startswith("beta") for k in mgr._plugins), (
+            "new plugin after first discovery was not auto-discovered"
+        )
+
+    def test_unchanged_plugin_dirs_skip_rescan(self, tmp_path, monkeypatch):
+        """A no-change sweep still early-returns (does not re-load every plugin)."""
+        home = tmp_path / "hermes_test"
+        plugins_dir = home / "plugins"
+        _make_plugin_dir(plugins_dir, "alpha", home=home)
+        monkeypatch.setenv("HERMES_HOME", str(home))
+
+        mgr = PluginManager()
+        mgr.discover_and_load()
+        loaded_before = dict(mgr._plugins)
+
+        mgr.discover_and_load()
+        assert mgr._plugins == loaded_before
+        assert mgr._plugin_dirs_fingerprint is not None
+
 
 # ── TestPluginLoading ──────────────────────────────────────────────────────
 

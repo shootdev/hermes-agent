@@ -1141,6 +1141,11 @@ class PluginManager(PluginLoaderMixin, PluginDispatchMixin, PluginLedgerMixin):
         self.home_path = Path(self.scope_key)
         self._discovery_lock = threading.RLock()
         self._discovered: bool = False
+        # Fingerprint of the mutable plugin source dirs at the last discovery pass. A long-lived
+        # process (multiplexer gateway) that discovered once can then notice plugins installed into
+        # this home after startup — without it, ``discover_and_load``'s ``_discovered`` early-return
+        # silently strands new platforms until restart. See #115267 (qzhuli bind → "needs restart").
+        self._plugin_dirs_fingerprint: Optional[str] = None
         self._cli_ref = None  # Set by CLI after plugin discovery
         self._gateway_message_injector: tuple[object, Callable] | None = None
         self._context_engine = None  # Set by a plugin via register_context_engine()
@@ -1229,9 +1234,10 @@ class PluginManager(PluginLoaderMixin, PluginDispatchMixin, PluginLedgerMixin):
         """Scan all plugin sources and load each plugin found; ``force`` unloads first so config
         changes / new bundled backends become visible in long-lived sessions."""
         with self._discovery_lock, _plugin_home_scope(self.home_path):
-            if self._discovered and not force:
+            dirs_changed = self._plugin_sources_changed_since_discovery()
+            if self._discovered and not force and not dirs_changed:
                 return
-            if force:
+            if force or (self._discovered and dirs_changed):
                 self.unload()  # the ledger owns teardown of process-global registries
             if env_var_enabled("HERMES_SAFE_MODE"):
                 logger.info("HERMES_SAFE_MODE=1 — plugin discovery skipped")
@@ -1253,6 +1259,7 @@ class PluginManager(PluginLoaderMixin, PluginDispatchMixin, PluginLedgerMixin):
                 # Plugin secret sources register during discover; the initial load_hermes_dotenv() already
                 # ran at import time. Re-pull so the first process sees plugin backends (tracking #64177).
                 self._refresh_secret_sources_after_discovery()
+                self._plugin_dirs_fingerprint = self._plugin_sources_fingerprint()
                 if force:
                     # config.yaml shell hooks / outbound webhooks live in ``_hooks`` but are
                     # config-owned; unload() wiped them and cannot restore them.
@@ -1262,6 +1269,49 @@ class PluginManager(PluginLoaderMixin, PluginDispatchMixin, PluginLedgerMixin):
             except BaseException:
                 self._discovered = False
                 raise
+
+    def _plugin_sources_fingerprint(self) -> str:
+        """Cheap fingerprint of the mutable plugin source dirs for this home: every manifest path
+        (plugin.yaml/plugin.yml/plugin.json) plus its (mtime_ns, size). Bundled + entry-point sources
+        are omitted — they are immutable per process (or code-update gated), so they never change
+        mid-run and would only churn the fingerprint on every scan."""
+        try:
+            from hermes_cli import plugins as _origin
+            user_dir = get_hermes_home() / "plugins"
+            dirs = [user_dir]
+            if _origin._env_enabled("HERMES_ENABLE_PROJECT_PLUGINS"):
+                dirs.append(Path.cwd() / ".hermes" / "plugins")
+        except Exception:
+            return ""
+        parts: list[str] = []
+        for root in dirs:
+            try:
+                for child in sorted(root.iterdir()) if root.is_dir() else ():
+                    if not child.is_dir():
+                        continue
+                    for manifest_name in ("plugin.yaml", "plugin.yml", "plugin.json"):
+                        manifest = child / manifest_name
+                        try:
+                            st = manifest.stat()
+                        except OSError:
+                            continue
+                        parts.append(f"{manifest}:{st.st_mtime_ns}:{st.st_size}")
+                        break
+            except OSError:
+                continue
+        return "\n".join(parts)
+
+    def _plugin_sources_changed_since_discovery(self) -> bool:
+        """True when a plugin manifest appeared/disappeared/updated under this home's source dirs
+        since the last discovery pass. Lets a long-lived process (multiplexer gateway, desktop
+        backend) notice plugins installed after startup without an explicit force. A pristine
+        fingerprint (never scanned) counts as unchanged so the first pass proceeds normally."""
+        if self._plugin_dirs_fingerprint is None:
+            return False
+        try:
+            return self._plugin_sources_fingerprint() != self._plugin_dirs_fingerprint
+        except Exception:
+            return False
 
     def _re_register_config_hooks_after_force(self) -> None:
         """Restore config-owned shell hooks/outbound webhooks after a force clear; each guarded
