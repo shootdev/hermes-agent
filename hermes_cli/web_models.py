@@ -57,6 +57,9 @@ class TelegramOnboardingStart(BaseModel):
 # hermes-dev: Qzhuli 扫码绑定（desktop 设置界面入口，插件平台 qzhuli）
 class QzhuliBindStart(BaseModel):
     environment: Optional[str] = None
+    # hermes-dev: 多 bot 独立绑定——绑定面板传入当前 bot（profile）名，
+    # 后端将其编入 bind_key（<bot_name>-<random>），扫码链路上 key 透传即可携带 bot 身份。
+    bot_name: Optional[str] = None
 
 class TelegramOnboardingApply(BaseModel):
     allowed_user_ids: List[str]

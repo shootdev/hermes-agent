@@ -963,7 +963,12 @@ async def start_qzhuli_bind(body: QzhuliBindStart) -> dict[str, Any]:
     environment = (body.environment or "release").strip().lower()
     if environment not in _QZHULI_CLIENT_HOSTS:
         raise HTTPException(status_code=400, detail=f"Unknown Qzhuli environment: {environment}")
-    bind_key = uuid.uuid4().hex
+    # hermes-dev: 多 bot 独立绑定——bot 名（profile 名）编入 bind_key：
+    # <bot_name>-<random>。imnut 服务端从 key 的第一个 '-' 前解析 bot 名，
+    # 因此 bot 名只允许 [a-z0-9_]，不含 '-'。
+    bot_name = (body.bot_name or "hermes").strip().lower()
+    bot_name = re.sub(r"[^a-z0-9_]", "_", bot_name)[:32] or "hermes"
+    bind_key = f"{bot_name}-{uuid.uuid4().hex}"
     qr_payload = json.dumps({"type": "imnut_bind", "key": bind_key, "id": 2}, separators=(",", ":"))
     return {"bind_key": bind_key, "qr_payload": qr_payload, "environment": environment}
 

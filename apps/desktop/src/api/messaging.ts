@@ -116,7 +116,9 @@ export function startQzhuliBind(
     ...profileScoped(profile),
     path: '/api/messaging/qzhuli/bind/start',
     method: 'POST',
-    body: { environment }
+    // hermes-dev: 多 bot 独立绑定——把当前 bot（profile）名传给后端，
+    // 后端将其编入 bind_key，让 imnut 服务端能区分每个 bot 的绑定。
+    body: { environment, bot_name: profile ?? 'hermes' }
   })
 }
 
