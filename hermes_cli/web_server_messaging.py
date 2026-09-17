@@ -220,7 +220,8 @@ _PLATFORM_OVERRIDES: dict[str, dict[str, Any]] = {
 # Display order: well-known platforms surface first; unknown plugins fall to
 # the end alphabetically.
 _PLATFORM_ORDER: tuple[str, ...] = (
-    "telegram", "discord", "slack", "mattermost", "matrix", "whatsapp", "signal", "bluebubbles",
+    # hermes-dev: qzhuli (Q助理) 是默认消息通道，排第一位。
+    "qzhuli", "telegram", "discord", "slack", "mattermost", "matrix", "whatsapp", "signal", "bluebubbles",
     "homeassistant", "email", "sms", "dingtalk", "feishu", "google_chat", "wecom", "wecom_callback",
     "weixin", "qqbot", "yuanbao", "api_server", "webhook",
 )

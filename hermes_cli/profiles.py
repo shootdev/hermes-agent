@@ -1025,6 +1025,68 @@ def _clone_staging_dir(profile_dir: Path) -> Path:
     return staging
 
 
+def _seed_qzhuli_channel(profile_dir: Path) -> None:
+    """hermes-dev: give a fresh profile the qzhuli (Q助理) channel out of the box.
+
+    Copies the platform plugin from the process home's ``plugins/qzhuli`` (or the default
+    profile's copy when the process home is a named profile) and enables
+    ``platforms.qzhuli`` in the profile's ``config.yaml``. Never copies credentials or
+    bindings — those always come from the profile's own QR-pairing flow. Best-effort:
+    profile creation must not fail when the plugin or config write is unavailable.
+    """
+    try:
+        source = _qzhuli_plugin_source()
+        if source is None:
+            return
+        target = profile_dir / "plugins" / "qzhuli"
+        if not target.exists() and source.is_dir():
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copytree(
+                source, target,
+                ignore=shutil.ignore_patterns("__pycache__", "*.pyc"),
+            )
+        _enable_qzhuli_platform(profile_dir / "config.yaml")
+    except Exception:
+        logger.debug("profile %s: qzhuli channel seed skipped", profile_dir.name, exc_info=True)
+
+
+def _qzhuli_plugin_source() -> Optional[Path]:
+    """The qzhuli plugin dir to clone for fresh profiles: the process home's own
+    ``plugins/qzhuli`` when present, else the default profile's copy."""
+    from hermes_constants import get_hermes_home
+    candidates = [
+        get_hermes_home() / "plugins" / "qzhuli",
+        Path.home() / ".hermes" / "plugins" / "qzhuli",
+    ]
+    for cand in candidates:
+        if cand.is_dir():
+            return cand
+    return None
+
+
+def _enable_qzhuli_platform(config_path: Path) -> None:
+    """Enable ``platforms.qzhuli.enabled: true`` in *config_path* (merge, never clobber).
+
+    A fresh profile without a ``config.yaml`` yet gets a minimal one carrying just the
+    qzhuli enablement — the profile's own model/config seeding will extend it later."""
+    from hermes_cli.config import read_user_config_raw
+    from utils import atomic_yaml_write
+    if config_path.is_file():
+        raw = read_user_config_raw(config_path)
+    else:
+        raw = {}
+    platforms = raw.setdefault("platforms", {})
+    if not isinstance(platforms, dict):
+        platforms = {}
+        raw["platforms"] = platforms
+    qzhuli = platforms.get("qzhuli")
+    if not isinstance(qzhuli, dict):
+        qzhuli = {}
+        platforms["qzhuli"] = qzhuli
+    qzhuli["enabled"] = True
+    atomic_yaml_write(config_path, raw, sort_keys=False)
+
+
 def _finish_profile_layout(profile_dir: Path, *, no_skills: bool, clone_all: bool,
                            description: Optional[str]) -> None:
     """Seed files a fresh profile owns from day one; runs on the staging tree before publish."""
@@ -1033,6 +1095,10 @@ def _finish_profile_layout(profile_dir: Path, *, no_skills: bool, clone_all: boo
     # had no file until first write and the profile silently inherited shell API keys —
     # read by users as "the new profile reads the root .env". Skipped when a clone copied one.
     _seed_file_if_missing(profile_dir / ".env", _PLACEHOLDER_ENV, 0o600)
+
+    # hermes-dev: qzhuli (Q助理) 是默认消息通道——新 profile 自动带上插件目录和 platforms
+    # 启用配置（不复制任何凭据/绑定，通道凭据仍走各自的扫码绑定流程）。
+    _seed_qzhuli_channel(profile_dir)
 
     # Default SOUL.md to customize immediately (skipped when a clone already provided one).
     with contextlib.suppress(Exception):  # best-effort — don't fail profile creation over this
