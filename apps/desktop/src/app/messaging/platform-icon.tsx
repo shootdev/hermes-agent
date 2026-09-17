@@ -16,6 +16,7 @@ import type { ComponentPropsWithoutRef, ComponentType, SVGProps } from 'react'
 import { forwardRef, memo } from 'react'
 
 import { AvatarChip } from '@/components/ui/avatar-chip'
+import qzhuliLogo from '@/assets/messaging/qzhuli.png'
 import { Globe, Link as LinkIcon, MessageSquareText } from '@/lib/icons'
 
 // ---------------------------------------------------------------------------
@@ -49,6 +50,10 @@ interface PlatformIconSpec {
   color: string
   kind: IconKind
   monogram?: string
+  /** Raster mark (e.g. a product logo PNG with baked-in rounded corners) shown
+   *  instead of an SVG glyph/monogram. Painted at full chip size; the chip's
+   *  tinted background shows through transparent corners. */
+  raster?: string
 }
 
 const PLATFORM_ICONS: Record<string, PlatformIconSpec> = {
@@ -69,7 +74,9 @@ const PLATFORM_ICONS: Record<string, PlatformIconSpec> = {
   api_server: { Icon: Globe, color: '#64748B', kind: 'generic' },
   weixin: { Icon: SiWechat, color: '#07C160', kind: 'brand' },
   qqbot: { Icon: SiQq, color: '#EB1923', kind: 'brand' },
-  yuanbao: { Icon: SiBilibili, color: '#FB7299', kind: 'brand' }
+  yuanbao: { Icon: SiBilibili, color: '#FB7299', kind: 'brand' },
+  // hermes-dev: qzhuli (Q助理) 官方 logo（透明圆角方片，整片铺满芯片）。
+  qzhuli: { raster: qzhuliLogo, color: '#0FA47F', kind: 'brand' }
 }
 
 interface PlatformAvatarProps extends Omit<ComponentPropsWithoutRef<'span'>, 'children'> {
@@ -87,15 +94,25 @@ export const PlatformAvatar = memo(
     { className, platformId, platformName, ...rest },
     ref
   ) {
+    const spec = PLATFORM_ICONS[platformId]
     return (
       <AvatarChip
         aria-hidden="true"
-        brand={PLATFORM_ICONS[platformId]}
+        brand={spec}
         className={className}
         name={platformName}
         ref={ref}
         {...rest}
-      />
+      >
+        {spec?.raster ? (
+          <img
+            alt=""
+            className="size-full object-contain"
+            draggable={false}
+            src={spec.raster}
+          />
+        ) : undefined}
+      </AvatarChip>
     )
   })
 )
