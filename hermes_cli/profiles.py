@@ -1050,6 +1050,37 @@ def _seed_qzhuli_channel(profile_dir: Path) -> None:
         logger.debug("profile %s: qzhuli channel seed skipped", profile_dir.name, exc_info=True)
 
 
+def _seed_model_auth(profile_dir: Path) -> None:
+    """hermes-dev: inherit the default profile's model-provider logins (``auth.json``
+    ``providers``) into a fresh profile so it works immediately — no per-bot re-login.
+
+    Only ``providers`` (model logins: shared process credentials like Nous Portal) are
+    copied; message-channel bot tokens/bindings are NEVER inherited — those always come
+    from the profile's own QR-pairing/bind flow. Best-effort and lock-guarded: profile
+    creation must not fail over this, and a concurrent default-profile login change must
+    not corrupt either store.
+    """
+    try:
+        from hermes_cli.auth import _auth_store_lock, _load_auth_store, _save_auth_store
+        from hermes_constants import get_hermes_home
+        default_home = Path.home() / ".hermes"
+        target = profile_dir / "auth.json"
+        # Only seed when the profile has no auth store yet (never overwrite a login the
+        # user just set up, and never touch clone paths that deliberately stripped it).
+        with _auth_store_lock(target_path=target):
+            current = _load_auth_store(target) if target.exists() else None
+            if current is None or not (current.get("providers") or {}):
+                source_store = _load_auth_store(default_home / "auth.json")
+                providers = source_store.get("providers") or {}
+                if providers:
+                    if current is None:
+                        current = {"version": 1, "providers": {}}
+                    current["providers"] = dict(providers)
+                    _save_auth_store(current, target_path=target)
+    except Exception:
+        logger.debug("profile %s: model-auth seed skipped", profile_dir.name, exc_info=True)
+
+
 def _qzhuli_plugin_source() -> Optional[Path]:
     """The qzhuli plugin dir to clone for fresh profiles: the process home's own
     ``plugins/qzhuli`` when present, else the default profile's copy."""
@@ -1099,6 +1130,12 @@ def _finish_profile_layout(profile_dir: Path, *, no_skills: bool, clone_all: boo
     # hermes-dev: qzhuli (Q助理) 是默认消息通道——新 profile 自动带上插件目录和 platforms
     # 启用配置（不复制任何凭据/绑定，通道凭据仍走各自的扫码绑定流程）。
     _seed_qzhuli_channel(profile_dir)
+
+    # hermes-dev: 新 profile 继承默认 profile 的模型登录（providers），否则每次新建 bot
+    # 都得手动重设登录（`auth.json` 的 providers 为空 → "Hermes is not logged into Nous
+    # Portal"）。只继承 providers（模型 provider 登录是共享进程凭据），绝不复制消息通道
+    # bot token/凭据——通道凭据走各自的扫码绑定。
+    _seed_model_auth(profile_dir)
 
     # Default SOUL.md to customize immediately (skipped when a clone already provided one).
     with contextlib.suppress(Exception):  # best-effort — don't fail profile creation over this

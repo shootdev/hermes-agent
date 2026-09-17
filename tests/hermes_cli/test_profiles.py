@@ -203,6 +203,53 @@ class TestCreateProfile:
         assert cfg["model"]["default"] == "some/model"
 
 
+    def test_fresh_profile_inherits_default_model_logins(self, profile_env):
+        """A fresh profile inherits the default profile's auth providers so it can
+        run immediately — no per-bot re-login.
+
+        Regression: ``_bootstrap_profile_dir`` seeded only the model block; the new
+        profile's ``auth.json`` had ``providers: {}`` and every turn died with
+        "Hermes is not logged into Nous Portal" until the user manually re-signed-in
+        (or an admin copied the provider across).
+        """
+        default_home = profile_env / ".hermes"
+        (default_home / "auth.json").write_text(json.dumps({
+            "version": 1,
+            "providers": {"nous": {"access_token": "tok-abc", "refresh_token": "rt-1"}},
+        }))
+
+        profile_dir = create_profile("coder", no_alias=True)
+
+        auth = json.loads((profile_dir / "auth.json").read_text(encoding="utf-8"))
+        assert (auth.get("providers") or {}).get("nous") == {
+            "access_token": "tok-abc", "refresh_token": "rt-1",
+        }
+
+    def test_fresh_profile_keeps_existing_logins(self, profile_env):
+        """An auth store the profile already carries is never overwritten by the
+        default's providers (a user who logged in during setup keeps their own)."""
+        default_home = profile_env / ".hermes"
+        (default_home / "auth.json").write_text(json.dumps({
+            "version": 1,
+            "providers": {"nous": {"access_token": "default-tok"}},
+        }))
+        # Pre-create the target profile's auth.json as a user's own login.
+        profile_dir = profile_env / ".hermes" / "profiles" / "coder"
+        profile_dir.mkdir(parents=True, exist_ok=True)
+        (profile_dir / "auth.json").write_text(json.dumps({
+            "version": 1,
+            "providers": {"anthropic": {"access_token": "own-tok"}},
+        }))
+
+        # create_profile refuses an existing identity dir; exercise the seed directly.
+        from hermes_cli.profiles import _seed_model_auth
+        _seed_model_auth(profile_dir)
+
+        auth = json.loads((profile_dir / "auth.json").read_text(encoding="utf-8"))
+        assert (auth.get("providers") or {}).get("anthropic") == {"access_token": "own-tok"}
+        assert "nous" not in (auth.get("providers") or {})
+
+
 
 
     def test_clone_config_copies_files(self, profile_env):
