@@ -1,0 +1,33 @@
+name: qzhuli-platform
+label: Qzhuli
+kind: platform
+version: 1.0.0
+description: >
+  Qzhuli (Q助理) gateway adapter for Hermes Agent.
+  Bridges the Qzhuli mobile app (via the imnut IM service) with Hermes:
+  scan a QR code with the Qzhuli app to bind, then chat in real time over
+  WebSocket (/wss_openclaw) and reply via the push_message HTTP endpoint.
+  Zero extra pip dependencies — uses httpx + websockets already in Hermes.
+author: hermes-dev
+requires_env:
+  - name: QZHULI_ENVIRONMENT
+    description: "Qzhuli environment (release = production, dev = test)"
+    prompt: "Qzhuli environment (release/dev)"
+    password: false
+  - name: QZHULI_BIND_KEY
+    description: "Bind key for QR-code pairing (set by the desktop bind flow)"
+    prompt: "Qzhuli bind key"
+    password: false
+optional_env:
+  - name: QZHULI_SENDER_CID
+    description: "Bound user cid (written automatically after pairing)"
+    prompt: "Qzhuli sender cid"
+    password: false
+  - name: QZHULI_CONV_ID
+    description: "Bound conversation id (written automatically after pairing)"
+    prompt: "Qzhuli conversation id"
+    password: false
+  - name: QZHULI_WS_TOKEN
+    description: "WebSocket bind token (written automatically after pairing)"
+    prompt: "Qzhuli ws token"
+    password: true
