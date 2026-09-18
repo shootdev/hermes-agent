@@ -103,3 +103,44 @@ def test_no_cid_skips_auto_approve():
         _run_bind(adapter)
 
     fake_store.approve_user.assert_not_called()
+
+
+def test_connect_with_existing_credentials_auto_approves():
+    """重启后凭据直连（不经过绑定轮询）也必须自动批准绑定者——
+    否则已绑定的 bot 重启后仍卡在人工批准环节。"""
+    adapter = _adapter()
+    adapter.sender_cid = "cid-123"
+    adapter.conv_id = "conv-1"
+    adapter.ws_token = "tok-1"
+
+    async def _fake_ws_loop():
+        return None
+
+    adapter._ws_loop = _fake_ws_loop  # type: ignore[method-assign]
+    fake_store = MagicMock()
+
+    with patch("gateway.pairing.PairingStore", return_value=fake_store):
+        asyncio.run(adapter.connect())
+
+    assert adapter.bind_status == "bound"
+    fake_store.approve_user.assert_called_once_with(
+        "qzhuli", "cid-123", user_name="Qzhuli 绑定用户"
+    )
+
+
+def test_connect_without_credentials_does_not_approve():
+    """无凭据（仅有 bind_key）时走轮询分支，不产生授权副作用。"""
+    adapter = _adapter()  # 有 bind_key 无凭据 → 轮询分支
+
+    async def _noop_bind():
+        return None
+
+    adapter._bind_and_connect = _noop_bind  # type: ignore[method-assign]
+    fake_store = MagicMock()
+
+    with patch("gateway.pairing.PairingStore", return_value=fake_store):
+        ok = asyncio.run(adapter.connect())
+
+    assert ok is True
+    assert adapter.bind_status == "pending"
+    fake_store.approve_user.assert_not_called()

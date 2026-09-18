@@ -106,6 +106,9 @@ class QzhuliAdapter(BasePlatformAdapter):
         self._closed = False
         if self.sender_cid and self.conv_id and self.ws_token:
             self.bind_status = "bound"
+            # 已绑定（重启后凭据直连）同样自动批准绑定者，否则旧绑定永远走不到
+            # _bind_and_connect 的授权路径（幂等，重复调用无副作用）。
+            self._auto_approve_bound_user()
             self._ws_task = asyncio.create_task(self._ws_loop())
             return True
         if self.bind_key:
