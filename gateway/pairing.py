@@ -411,6 +411,18 @@ class PairingStore:
             _sync_allowlist_remove(platform, user_id)
             return True
 
+    def approve_user(self, platform: str, user_id: str, user_name: str = "") -> None:
+        """Directly approve a user without a pairing code.
+
+        Used by adapters that verify an identity themselves (e.g. a freshly bound
+        Qzhuli conversation where the phone-side scan already confirmed the user).
+        Idempotent; mirrors the grant into a configured allowlist like code
+        approval does.
+        """
+        with self._lock:
+            self._cleanup_expired(platform)
+            self._approve_user(platform, user_id, user_name)
+
     # ----- Pending codes -----
 
     @staticmethod

@@ -511,6 +511,42 @@ class TestRevoke:
 
 
 # ---------------------------------------------------------------------------
+# Direct approval without a pairing code (adapter-verified identities, e.g.
+# a freshly bound Qzhuli conversation where phone-side scan already confirmed)
+# ---------------------------------------------------------------------------
+
+
+class TestApproveUserDirect:
+    def test_approve_user_grants_access_and_records_name(self, tmp_path):
+        with patch("gateway.pairing.PAIRING_DIR", tmp_path):
+            store = PairingStore()
+            store.approve_user("qzhuli", "cid-123", "Qzhuli 绑定用户")
+            assert store.is_approved("qzhuli", "cid-123") is True
+            approved = store.list_approved("qzhuli")
+        assert len(approved) == 1
+        assert approved[0]["user_id"] == "cid-123"
+        assert approved[0]["user_name"] == "Qzhuli 绑定用户"
+
+    def test_approve_user_is_idempotent(self, tmp_path):
+        with patch("gateway.pairing.PAIRING_DIR", tmp_path):
+            store = PairingStore()
+            store.approve_user("qzhuli", "cid-123")
+            store.approve_user("qzhuli", "cid-123")
+            approved = store.list_approved("qzhuli")
+        assert len(approved) == 1
+        assert approved[0]["user_id"] == "cid-123"
+
+    def test_approve_user_replaces_an_existing_grant(self, tmp_path):
+        with patch("gateway.pairing.PAIRING_DIR", tmp_path):
+            store = PairingStore()
+            store.approve_user("qzhuli", "cid-123", "old name")
+            store.approve_user("qzhuli", "cid-123", "new name")
+            approved = store.list_approved("qzhuli")
+        assert len(approved) == 1
+        assert approved[0]["user_name"] == "new name"
+
+
+# ---------------------------------------------------------------------------
 # List & clear
 # ---------------------------------------------------------------------------
 

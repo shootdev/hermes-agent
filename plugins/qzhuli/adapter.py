@@ -151,6 +151,7 @@ class QzhuliAdapter(BasePlatformAdapter):
                     if await self._poll_bind_status():
                         self.bind_status = "bound"
                         self._persist_credentials()
+                        self._auto_approve_bound_user()
                         logger.info("Qzhuli: bound conv=%s cid=%s — connecting websocket", self.conv_id, self.sender_cid)
                         self._ws_task = asyncio.create_task(self._ws_loop())
                         return
@@ -206,6 +207,25 @@ class QzhuliAdapter(BasePlatformAdapter):
             kept.append(f"{k}={v}")
         env_path.write_text("\n".join(kept) + "\n", encoding="utf-8")
         logger.info("Qzhuli: credentials persisted to %s", env_path)
+
+    def _auto_approve_bound_user(self) -> None:
+        """扫码绑定即授权：把绑定者 cid 直接写入当前 profile 的配对存储。
+
+        扫码本身已由手机端 Q助理确认，等于一次强身份认证；若不自动批准，
+        该 cid 的每条私信都会在网关准入闸门被拦下、进入人工批准环节。
+        失败只记日志，不影响绑定与 WS 连接。
+        """
+        cid = self.sender_cid
+        if not cid:
+            return
+        try:
+            from gateway.pairing import PairingStore
+            # 适配器运行在 profile serve 进程内，无参 PairingStore() 即落到
+            # 该 profile 的 HERMES_HOME，与网关授权读取的是同一份存储。
+            PairingStore().approve_user("qzhuli", cid, user_name="Qzhuli 绑定用户")
+            logger.info("Qzhuli: auto-approved bound user cid=%s (pairing store)", cid)
+        except Exception as exc:  # 授权失败不阻断绑定链路
+            logger.warning("Qzhuli: auto-approve bound user failed (cid=%s): %s", cid, exc)
 
     # ── WebSocket ───────────────────────────────────────────────────────────
 
