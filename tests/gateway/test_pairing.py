@@ -545,6 +545,17 @@ class TestApproveUserDirect:
         assert len(approved) == 1
         assert approved[0]["user_name"] == "new name"
 
+    def test_approve_user_clears_outstanding_pending_code(self, tmp_path):
+        """直接批准后，该用户旧的待批准配对码必须作废并从 pending 列表移除，
+        否则桌面端会一直显示一条无法消失的"待批准"记录（sam 实测复现）。"""
+        with patch("gateway.pairing.PAIRING_DIR", tmp_path):
+            store = PairingStore()
+            store.generate_code("qzhuli", "cid-123", "Alice")
+            assert store.list_pending("qzhuli")
+            store.approve_user("qzhuli", "cid-123", "Alice")
+            assert store.is_approved("qzhuli", "cid-123") is True
+            assert store.list_pending("qzhuli") == []
+
 
 # ---------------------------------------------------------------------------
 # List & clear

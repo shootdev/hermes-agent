@@ -417,11 +417,29 @@ class PairingStore:
         Used by adapters that verify an identity themselves (e.g. a freshly bound
         Qzhuli conversation where the phone-side scan already confirmed the user).
         Idempotent; mirrors the grant into a configured allowlist like code
-        approval does.
+        approval does, and invalidates any outstanding pending pairing code for
+        the same user (otherwise the old code keeps showing as "pending" in
+        admin surfaces).
         """
         with self._lock:
             self._cleanup_expired(platform)
             self._approve_user(platform, user_id, user_name)
+            self._drop_pending_for_user(platform, user_id)
+
+    def _drop_pending_for_user(self, platform: str, user_id: str) -> None:
+        """Remove pending pairing-code entries belonging to ``user_id``. A direct
+        approval supersedes any outstanding code. Must hold ``self._lock``."""
+        normalized = _normalize_user_id(platform, user_id)
+        path = self._pending_path(platform)
+        pending = self._load_json(path)
+        removed = False
+        for entry_id in list(pending):
+            entry = pending[entry_id]
+            if isinstance(entry, dict) and str(entry.get("user_id", "")).strip() == normalized:
+                del pending[entry_id]
+                removed = True
+        if removed:
+            self._save_json(path, pending)
 
     # ----- Pending codes -----
 
