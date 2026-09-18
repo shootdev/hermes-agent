@@ -30,6 +30,10 @@ const LOG_POLL_MS = 3_000
 // useful — strip it so the tail reads as real gateway activity at a glance.
 const LOG_NOISE_RE = /\bws (?:accepted|closed|response sent|ping|pong)\b/i
 
+// hermes-dev: qzhuli (Q助理) 是默认消息通道，平台列表里排第一位；其余平台按字母序。
+const PLATFORM_DISPLAY_RANK: Record<string, number> = { qzhuli: 0 }
+const platformRank = (name: string) => PLATFORM_DISPLAY_RANK[name] ?? 1
+
 // Live tail while the popover is mounted (i.e. open): poll on a tight cadence
 // and stop on unmount, instead of a global always-on status poll.
 function useGatewayLogTail(): string[] {
@@ -143,7 +147,8 @@ export function GatewayMenuPanel({
         : copy.checkingInference
     : copy.disconnected
 
-  const platforms = Object.entries(statusSnapshot?.gateway_platforms || {}).sort(([l], [r]) => l.localeCompare(r))
+  const platforms = Object.entries(statusSnapshot?.gateway_platforms || {})
+    .sort(([l], [r]) => platformRank(l) - platformRank(r) || l.localeCompare(r))
   const recentLogs = useGatewayLogTail()
 
   // Keep the tail pinned to the latest line as it streams.
