@@ -112,15 +112,17 @@ export function cancelTelegramOnboarding(pairingId: string, profile?: null | str
 
 export function startQzhuliBind(
   environment: string,
+  botName: string,
   profile?: null | string
 ): Promise<QzhuliBindStartResponse> {
   return hermesApi<QzhuliBindStartResponse>({
     ...profileScoped(profile),
     path: '/api/messaging/qzhuli/bind/start',
     method: 'POST',
-    // hermes-dev: 多 bot 独立绑定——把当前 bot（profile）名传给后端，
-    // 后端将其编入 bind_key，让 imnut 服务端能区分每个 bot 的绑定。
-    body: { environment, bot_name: profile ?? 'hermes' }
+    // hermes-dev: 多 bot 独立绑定——botName 为绑定面板当前作用域的实际 profile 名
+    // （default 由调用方映射为 hermes），后端将其编入 bind_key，
+    // 让 imnut 服务端能区分每个 bot 的绑定。
+    body: { environment, bot_name: botName }
   })
 }
 

@@ -956,6 +956,19 @@ def _qzhuli_check_bind_status_sync(url: str) -> dict[str, Any]:
         return response.json()
 
 
+def _sanitize_qzhuli_bot_name(name: str | None) -> str:
+    """把绑定面板传入的 bot 名清洗成可编入 bind_key 前缀的形态。
+
+    bind_key 约定为 <bot_name>-<random>，PHP/Go 服务端都以第一个 '-' 前作为 bot 名，
+    因此清洗规则是：小写、把空白与 '-' 折叠为 '_'、截断 32 字符、空值回退 'hermes'。
+    保留中文/字母/数字/下划线——旧规则把非 [a-z0-9_] 全部替换为 '_'，会把不同长度的
+    中文名折叠成相同下划线串，导致两个不同 bot 被误判为“同类型同名”。
+    """
+    bot_name = (name or "hermes").strip().lower()
+    bot_name = re.sub(r"[\s-]+", "_", bot_name)[:32] or "hermes"
+    return bot_name
+
+
 @router.post("/api/messaging/qzhuli/bind/start")
 async def start_qzhuli_bind(body: QzhuliBindStart) -> dict[str, Any]:
     import uuid
@@ -964,10 +977,8 @@ async def start_qzhuli_bind(body: QzhuliBindStart) -> dict[str, Any]:
     if environment not in _QZHULI_CLIENT_HOSTS:
         raise HTTPException(status_code=400, detail=f"Unknown Qzhuli environment: {environment}")
     # hermes-dev: 多 bot 独立绑定——bot 名（profile 名）编入 bind_key：
-    # <bot_name>-<random>。imnut 服务端从 key 的第一个 '-' 前解析 bot 名，
-    # 因此 bot 名只允许 [a-z0-9_]，不含 '-'。
-    bot_name = (body.bot_name or "hermes").strip().lower()
-    bot_name = re.sub(r"[^a-z0-9_]", "_", bot_name)[:32] or "hermes"
+    # <bot_name>-<random>。imnut 服务端从 key 的第一个 '-' 前解析 bot 名。
+    bot_name = _sanitize_qzhuli_bot_name(body.bot_name)
     bind_key = f"{bot_name}-{uuid.uuid4().hex}"
     qr_payload = json.dumps({"type": "imnut_bind", "key": bind_key, "id": 2}, separators=(",", ":"))
     return {"bind_key": bind_key, "qr_payload": qr_payload, "environment": environment}

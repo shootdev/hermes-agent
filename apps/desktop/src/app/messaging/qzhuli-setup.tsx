@@ -28,6 +28,12 @@ export interface QzhuliBindSetupProps {
   platform: MessagingPlatformInfo
   /** Request-shaped profile scope (undefined → active profile). */
   scopeProfile: string | undefined
+  /**
+   * Bot 名编入 bind_key（<bot_name>-<random>），服务端按 (uid, 类型, bot 名)
+   * 查重。必须是当前作用域的实际 profile 名（default 已由调用方映射为 hermes），
+   * 否则多个 bot 会共享同一个绑定名而被判为“同类型同名”。
+   */
+  botName: string
 }
 
 /**
@@ -35,7 +41,7 @@ export interface QzhuliBindSetupProps {
  * (`{"type":"imnut_bind","key":…,"id":2}`), polls the Q助理 bind status via
  * the backend until the user scans and confirms, then writes the credentials.
  */
-export function QzhuliBindSetup({ onApplied, platform, scopeProfile }: QzhuliBindSetupProps) {
+export function QzhuliBindSetup({ onApplied, platform, scopeProfile, botName }: QzhuliBindSetupProps) {
   const { t } = useI18n()
   const q = t.messaging.qzhuliBind
   const [setup, setSetup] = useState<null | QzhuliBindStartResponse>(null)
@@ -55,7 +61,7 @@ export function QzhuliBindSetup({ onApplied, platform, scopeProfile }: QzhuliBin
     setError('')
 
     try {
-      const result = await startQzhuliBind(QZHULI_ENVIRONMENT, scopeProfile)
+      const result = await startQzhuliBind(QZHULI_ENVIRONMENT, botName, scopeProfile)
       const dataUrl = await renderQr(result.qr_payload)
       setSetup(result)
       setQrDataUrl(dataUrl)

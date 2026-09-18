@@ -30,7 +30,7 @@ import { normalize } from '@/lib/text'
 import { cn } from '@/lib/utils'
 import { $changeEventsAvailable, $pairingChangeTick, $platformsChangeTick } from '@/store/live-sync'
 import { notify, notifyError } from '@/store/notifications'
-import { $settingsRequestProfile } from '@/store/settings-scope'
+import { $settingsRequestProfile, $settingsScopeProfile } from '@/store/settings-scope'
 import { $gatewayRestarting, runGatewayRestart, watchGatewayRestartOutcome } from '@/store/system-actions'
 
 import { useRefreshHotkey } from '../hooks/use-refresh-hotkey'
@@ -135,6 +135,11 @@ export function MessagingView({ setStatusbarItemGroup: _setStatusbarItemGroup, .
   // Shared settings "Applies to" scope, request-shaped (undefined → follow
   // the active profile; the API helpers treat null as "target primary").
   const scopeProfile = useStore($settingsRequestProfile)
+  // Qzhuli bind_key 编入的是实际 profile 名（default → 'hermes'，与 9/16 多 bot
+  // 迁移的历史回填一致）。若沿用 `?? 'hermes'` 兜底，未显式选 profile 时所有
+  // bot 会共享绑定名 'hermes' 而被服务端判为“同类型同名”。
+  const qzhuliBotName = useStore($settingsScopeProfile)
+  const qzhuliBindBotName = qzhuliBotName === 'default' ? 'hermes' : qzhuliBotName
   const [platforms, setPlatforms] = useState<MessagingPlatformInfo[] | null>(null)
   // A saved credential/toggle only takes effect on the next gateway start, so a
   // vanishing toast is not enough: the page keeps a banner up until a restart
@@ -580,6 +585,7 @@ export function MessagingView({ setStatusbarItemGroup: _setStatusbarItemGroup, .
                     onTelegramApplied={result => void handleTelegramApplied(result)}
                     pending={pendingByPlatform[selected.id] ?? []}
                     platform={selected}
+                    qzhuliBindBotName={qzhuliBindBotName}
                     saving={saving}
                     scopeProfile={scopeProfile}
                   />
@@ -662,6 +668,7 @@ function PlatformDetail({
   onTelegramApplied,
   pending,
   platform,
+  qzhuliBindBotName,
   saving,
   scopeProfile
 }: {
@@ -675,6 +682,7 @@ function PlatformDetail({
   onTelegramApplied: (result: TelegramOnboardingApplyResponse) => void
   pending: PairingUser[]
   platform: MessagingPlatformInfo
+  qzhuliBindBotName: string
   saving: string | null
   scopeProfile: string | undefined
 }) {
@@ -785,7 +793,7 @@ function PlatformDetail({
         <section>
           <SectionTitle>{m.qzhuliBind.quickSetup}</SectionTitle>
           <div className="mt-3">
-            <QzhuliBindSetup platform={platform} scopeProfile={scopeProfile} />
+            <QzhuliBindSetup botName={qzhuliBindBotName} platform={platform} scopeProfile={scopeProfile} />
           </div>
         </section>
       )}
