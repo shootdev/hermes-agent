@@ -449,6 +449,33 @@ def interactive_setup() -> None:
     print_success("绑定密钥已保存。重启 gateway 后 Hermes 会自动轮询绑定状态。")
 
 
+
+# hermes-dev: 进程外独立发送（供 hermes send / cron ticker 在独立进程投递用）。
+# 不依赖 gateway 的 websocket，直接 HTTP POST push_message，凭据从 env 读。
+async def _standalone_send(pconfig, chat_id: str, message: str, *,
+                           thread_id: Optional[str] = None,
+                           media_files=None, force_document=False) -> dict:
+    environment = (_get_scoped_secret("QZHULI_ENVIRONMENT") or "release").strip().lower()
+    host = _QZHULI_IM_HOST.get(environment, _QZHULI_IM_HOST["release"])
+    sender_cid = (_get_scoped_secret("QZHULI_SENDER_CID") or "").strip()
+    conv_id = (chat_id or "").strip()
+    if not conv_id:
+        return {"error": "qzhuli: no chat_id"}
+    payload = {"conv_id": conv_id, "content": message, "msg_type": 1, "role": 0}
+    if sender_cid:
+        payload["sender_cid"] = sender_cid
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.post(f"https://{host}{_PUSH_PATH}", json=payload)
+            resp.raise_for_status()
+            body = resp.json()
+        code = body.get("code") if isinstance(body, dict) else None
+        if isinstance(code, (int, float)) and code != 200:
+            return {"error": f"qzhuli push error: {body.get('msg') or code}"}
+        return {"success": True, "message_id": str(_now_ms())}
+    except Exception as exc:
+        return {"error": str(exc)}
+
 def register(ctx):
     """Plugin entry point: called by the Hermes plugin system."""
     ctx.register_platform(
@@ -464,6 +491,9 @@ def register(ctx):
         env_enablement_fn=_env_enablement,
         max_message_length=2000,
         emoji="🦞",
+        # hermes-dev: 让 cron ``deliver=qzhuli`` 通过白名单；投递时读 QZHULI_CONV_ID 作为 home chat id。
+        cron_deliver_env_var="QZHULI_CONV_ID",
+        standalone_sender_fn=_standalone_send,
         allow_update_command=True,
         # hermes-dev: 准入 allowlist——网关默认拒绝无 allowlist 平台的未知发件人；
         # 声明这两个 env 名后，gateway 从 .env 读取 QZHULI_ALLOWED_USERS / QZHULI_ALLOW_ALL_USERS。
