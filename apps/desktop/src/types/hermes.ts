@@ -396,8 +396,7 @@ export interface QzhuliBindStartResponse {
 }
 
 export type QzhuliBindStatusResponse =
-  | { bind_token: string; cid: string; conversation_id: string; status: 'bound' }
-  | { status: 'pending' }
+  { bind_token: string; cid: string; conversation_id: string; status: 'bound' } | { status: 'pending' }
 
 // -- Webhooks (subscription CRUD) --------------------------------------------
 // Incoming HTTP event routes served by the webhook gateway platform. Backed by

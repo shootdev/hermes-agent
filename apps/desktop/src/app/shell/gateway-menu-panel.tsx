@@ -147,8 +147,10 @@ export function GatewayMenuPanel({
         : copy.checkingInference
     : copy.disconnected
 
-  const platforms = Object.entries(statusSnapshot?.gateway_platforms || {})
-    .sort(([l], [r]) => platformRank(l) - platformRank(r) || l.localeCompare(r))
+  const platforms = Object.entries(statusSnapshot?.gateway_platforms || {}).sort(
+    ([l], [r]) => platformRank(l) - platformRank(r) || l.localeCompare(r)
+  )
+
   const recentLogs = useGatewayLogTail()
 
   // Keep the tail pinned to the latest line as it streams.

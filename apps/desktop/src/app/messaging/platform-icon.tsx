@@ -15,8 +15,8 @@ import {
 import type { ComponentPropsWithoutRef, ComponentType, SVGProps } from 'react'
 import { forwardRef, memo } from 'react'
 
-import { AvatarChip } from '@/components/ui/avatar-chip'
 import qzhuliLogo from '@/assets/messaging/qzhuli.png'
+import { AvatarChip } from '@/components/ui/avatar-chip'
 import { Globe, Link as LinkIcon, MessageSquareText } from '@/lib/icons'
 
 // ---------------------------------------------------------------------------
@@ -95,22 +95,11 @@ export const PlatformAvatar = memo(
     ref
   ) {
     const spec = PLATFORM_ICONS[platformId]
+
     return (
-      <AvatarChip
-        aria-hidden="true"
-        brand={spec}
-        className={className}
-        name={platformName}
-        ref={ref}
-        {...rest}
-      >
+      <AvatarChip aria-hidden="true" brand={spec} className={className} name={platformName} ref={ref} {...rest}>
         {spec?.raster ? (
-          <img
-            alt=""
-            className="size-full object-contain"
-            draggable={false}
-            src={spec.raster}
-          />
+          <img alt="" className="size-full object-contain" draggable={false} src={spec.raster} />
         ) : undefined}
       </AvatarChip>
     )

@@ -2977,8 +2977,7 @@ export const en: Translations = {
     // hermes-dev: Qzhuli 扫码绑定（插件平台 qzhuli，desktop 设置界面入口）
     qzhuliBind: {
       quickSetup: 'Quick setup',
-      quickHelp:
-        'Link Hermes to your Qzhuli (Q助理) account: scan the QR with the Qzhuli app and confirm the binding.',
+      quickHelp: 'Link Hermes to your Qzhuli (Q助理) account: scan the QR with the Qzhuli app and confirm the binding.',
       createWithQr: 'Connect with QR',
       starting: 'Starting…',
       scanHint: 'Open the Qzhuli app, scan the QR code, and confirm the binding.',
