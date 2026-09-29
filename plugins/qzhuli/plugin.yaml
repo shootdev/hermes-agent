@@ -14,11 +14,11 @@ requires_env:
     description: "Qzhuli environment (release = production, dev = test)"
     prompt: "Qzhuli environment (release/dev)"
     password: false
+optional_env:
   - name: QZHULI_BIND_KEY
     description: "Bind key for QR-code pairing (set by the desktop bind flow)"
     prompt: "Qzhuli bind key"
     password: false
-optional_env:
   - name: QZHULI_SENDER_CID
     description: "Bound user cid (written automatically after pairing)"
     prompt: "Qzhuli sender cid"

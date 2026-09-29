@@ -485,7 +485,7 @@ def register(ctx):
         check_fn=check_requirements,
         validate_config=validate_config,
         is_connected=is_connected,
-        required_env=["QZHULI_ENVIRONMENT", "QZHULI_BIND_KEY", "QZHULI_SENDER_CID", "QZHULI_CONV_ID", "QZHULI_WS_TOKEN"],
+        required_env=["QZHULI_ENVIRONMENT"],
         install_hint="No extra packages needed (uses httpx + websockets already in Hermes)",
         setup_fn=interactive_setup,
         env_enablement_fn=_env_enablement,
