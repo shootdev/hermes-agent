@@ -222,7 +222,13 @@ export default defineConfig(({ command }) => ({
   // (b) triggers Vite's "new dependencies optimized" full page reload mid-
   // session. It's pure ESM with no CJS deps, so serving it unoptimized is
   // free. Query and bare forms all listed — exclusion matches exact ids.
+  // qrcode is only reached through the QR setup's DYNAMIC import
+  // (messaging/qzhuli-setup.tsx → import('qrcode')) and is a CJS package, so
+  // leaving it to runtime discovery makes first use re-optimize deps mid-session
+  // (invalidating every cached ?v= URL) and can fail outright when the dep cache
+  // is missing. Pre-bundling it at startup keeps the QR flow deterministic.
   optimizeDeps: {
+    include: ['qrcode'],
     exclude: [
       'driver.js',
       'driver.js/dist/driver.js.iife.js',
