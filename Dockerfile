@@ -342,6 +342,21 @@ RUN cd plugins/platforms/photon/sidecar && \
     npm ci --no-audit --fetch-retries=5 && \
     npm cache clean --force
 
+# ---------- QZhuli CLI (qz) baked runtime ----------
+# @qzhuli/qzhuli-cli ships its own postinstall that scatters the agent skill
+# into ~/.claude and friends; the Hermes skill is bundled under skills/ instead,
+# so CI=1 skips that scatter. better-sqlite3's prebuild install still runs.
+# Baked here (like the photon sidecar) because the runtime tree is EROFS: a
+# lazy npm install on first use would fail. The qz bin goes on PATH via /usr/local/bin.
+COPY tools/qzhuli-cli/package.json \
+     tools/qzhuli-cli/package-lock.json \
+     tools/qzhuli-cli/
+RUN cd tools/qzhuli-cli && \
+    CI=1 AX_SKIP_SKILL_INSTALL=1 npm ci --no-audit --fetch-retries=5 && \
+    ln -s /opt/hermes/tools/qzhuli-cli/node_modules/.bin/qz /usr/local/bin/qz && \
+    qz --version && \
+    npm cache clean --force
+
 # Shared product outputs are independent of application dependency assembly.
 COPY --from=frontend_build /opt/products/tui /opt/hermes/ui-tui
 COPY --from=frontend_build /opt/products/web /opt/hermes/hermes_cli/web_dist

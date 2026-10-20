@@ -1,0 +1,51 @@
+#!/bin/sh
+# qz launcher for the qzhuli skill.
+#
+# Resolution order:
+#   1. `qz` already on PATH (global install; the Docker bake; a prior npx cache).
+#   2. QZ_BIN override, then a repo-local node_modules/.bin/qz found by walking up
+#      from the current directory and from this script's own location (source
+#      checkout pre-install).
+#   3. npx pinned fallback: downloads/caches @qzhuli/qzhuli-cli on first use.
+#
+# Never installs globally; passes every argument through to qz unchanged.
+
+# 1. Already on PATH.
+if command -v qz >/dev/null 2>&1; then
+    exec qz "$@"
+fi
+
+# 2a. Explicit override.
+if [ -n "$QZ_BIN" ] && [ -x "$QZ_BIN" ]; then
+    exec "$QZ_BIN" "$@"
+fi
+
+# 2b. Walk up from cwd to a checkout carrying node_modules/.bin/qz.
+dir="$PWD"
+while [ -n "$dir" ] && [ "$dir" != "/" ]; do
+    candidate="$dir/node_modules/.bin/qz"
+    if [ -x "$candidate" ]; then
+        exec "$candidate" "$@"
+    fi
+    parent=$(dirname "$dir")
+    [ "$parent" = "$dir" ] && break
+    dir="$parent"
+done
+
+# 2c. Walk up from this script's own location (works from any cwd in a checkout).
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" 2>/dev/null && pwd)
+if [ -n "$script_dir" ]; then
+    dir="$script_dir"
+    while [ -n "$dir" ] && [ "$dir" != "/" ]; do
+        candidate="$dir/node_modules/.bin/qz"
+        if [ -x "$candidate" ]; then
+            exec "$candidate" "$@"
+        fi
+        parent=$(dirname "$dir")
+        [ "$parent" = "$dir" ] && break
+        dir="$parent"
+    done
+fi
+
+# 3. npx fallback (pinned; cached after first run).
+exec npx -p @qzhuli/qzhuli-cli@0.5.12 qz "$@"

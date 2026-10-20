@@ -188,6 +188,26 @@ if [ "$runtime_only" = true ]; then
 fi
 
 # ============================================================================
+# QZhuli CLI (qz) best-effort local pre-install
+# ============================================================================
+# When npm is available, install the pinned qz CLI into the repo node_modules so
+# the bundled qzhuli skill works without a global install. Non-fatal: a node-less
+# setup skips it; the skill resolves qz from PATH, the local bin, or npx.
+if command -v npm >/dev/null 2>&1; then
+    echo -e "${CYAN}→${NC} Pre-installing QZhuli CLI (qz) into repo node_modules..."
+    if CI=true AX_SKIP_SKILL_INSTALL=1 \
+        npm install --only=production --no-save --no-audit --no-fund \
+            @qzhuli/qzhuli-cli@0.5.12 >/dev/null 2>&1; then
+        qz_version="$(./node_modules/.bin/qz --version 2>/dev/null || echo unknown)"
+        echo -e "${GREEN}✓${NC} qz installed (${qz_version})"
+    else
+        echo -e "${YELLOW}!${NC} qz pre-install skipped (npm install failed); the skill falls back to npx on first use"
+    fi
+else
+    echo -e "${YELLOW}!${NC} npm not found; skipping qz pre-install (skill falls back to npx on first use)"
+fi
+
+# ============================================================================
 # Environment file
 # ============================================================================
 

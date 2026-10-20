@@ -120,6 +120,28 @@ if (-not (Test-Path $envFile)) {
 }
 
 # ---------------------------------------------------------------------------
+# QZhuli CLI (qz) best-effort local pre-install
+# ---------------------------------------------------------------------------
+# When npm is available, install the pinned qz CLI into the repo node_modules so
+# the bundled qzhuli skill works without a global install. Non-fatal: a node-less
+# setup skips it; the skill resolves qz from PATH, the local bin, or npx.
+if (Get-Command npm -ErrorAction SilentlyContinue) {
+    Write-Host 'Pre-installing QZhuli CLI (qz) into repo node_modules...' -ForegroundColor Cyan
+    $env:CI = 'true'
+    $env:AX_SKIP_SKILL_INSTALL = '1'
+    npm install --only=production --no-save --no-audit --no-fund '@qzhuli/qzhuli-cli@0.5.12' 2>$null
+    $qzExit = $LASTEXITCODE
+    Remove-Item Env:\CI, Env:\AX_SKIP_SKILL_INSTALL -ErrorAction SilentlyContinue
+    if ($qzExit -eq 0) {
+        Write-Host 'qz installed' -ForegroundColor Green
+    } else {
+        Write-Host 'qz pre-install skipped; the skill falls back to npx on first use' -ForegroundColor Yellow
+    }
+} else {
+    Write-Host 'npm not found; skipping qz pre-install (skill falls back to npx on first use)' -ForegroundColor Yellow
+}
+
+# ---------------------------------------------------------------------------
 # Seed bundled skills into ~/.hermes/skills/
 # ---------------------------------------------------------------------------
 $skillsDir = if ($env:HERMES_HOME) { Join-Path $env:HERMES_HOME 'skills' } else { Join-Path $HOME '.hermes/skills' }

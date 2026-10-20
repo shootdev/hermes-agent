@@ -82,9 +82,12 @@
     "fsevents@2.3.2": true,
     "fsevents@2.3.3": true,
     "get-windows@9.3.0": true,
-    "lefthook@2.1.14": true
+    "lefthook@2.1.14": true,
+    "@qzhuli/qzhuli-cli": false,
+    "better-sqlite3@12.11.1": true
   },
   "dependencies": {
+    "@qzhuli/qzhuli-cli": "0.5.12",
     "js-yaml": "4.3.2",
     "semver": "7.7.4"
   }

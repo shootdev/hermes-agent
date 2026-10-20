@@ -1,0 +1,12 @@
+{
+  "name": "@hermes-agent/qzhuli-cli-bundle",
+  "private": true,
+  "version": "0.5.12",
+  "description": "Baked @qzhuli/qzhuli-cli runtime for the Hermes Docker image; the skill lives in skills/productivity/qzhuli/.",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@qzhuli/qzhuli-cli": "0.5.12"
+  }
+}
