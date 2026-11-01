@@ -270,7 +270,7 @@ class CLIAgentSetupMixin:
         # process only routes, so it must not run a second JWT exchange per launch.
         with deferred_token_mint():
             try:
-                # target_model: the ladder's model-keyed rungs (Zen/Go api_mode, Copilot/Nous
+                # target_model: the ladder's model-keyed rungs (Zen/Go api_mode, per-model
                 # api_mode) must see the model this CLI will actually send, not config's `default`,
                 # or `hermes -m mimo-v2.5 --provider opencode-go` resolves an api_mode/base_url the
                 # sent model cannot use (#112600).
@@ -716,6 +716,7 @@ class CLIAgentSetupMixin:
                 openrouter_min_coding_score=self._openrouter_min_coding_score,
                 session_id=self.session_id, platform="cli", session_db=self._session_db,
                 clarify_callback=clarify_callback, connection_callback=connection_callback,
+                connection_update_callback=None if single_query_mode else self._connection_on_change,
                 # The gateway's model-guard refusal is asked like main's own guard; -q cannot answer it.
                 model_confirm_callback=None if single_query_mode else self._confirm_owner_model_switch,
                 # Another viewer answering the gateway's clarify/sudo/secret request closes this modal.

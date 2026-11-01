@@ -16,14 +16,11 @@ import queue
 import threading
 import time
 
-from hermes_cli.gateway_client import DEFAULT_RPC_TIMEOUT, RESUME_KEY_MISMATCH, GatewayClientError, GatewayRPCError
+from hermes_cli.gateway_client import (DEFAULT_RPC_TIMEOUT, DISCONNECTED, NOT_SENT, RESUME_KEY_MISMATCH,
+                                       GatewayClientError, GatewayRPCError)
 
 logger = logging.getLogger(__name__)
 
-DISCONNECTED = ("Gateway disconnected; turn outcome is unknown. Resume the printed session ID to check "
-                "whether it completed or was interrupted; do not resend the work.")
-# A request refused before it reached any socket: nothing is in doubt, so never the copy above.
-NOT_SENT = "Gateway disconnected before the request was sent; nothing was sent."
 # ``session.resume`` refusals that mean "this viewer may not open that session": the caller keeps the
 # session it is on instead of adopting the target (startup resume, bare -c fallback).
 RESUME_REFUSALS = frozenset({"not_found", "permission_denied"})
@@ -68,7 +65,7 @@ class SessionState:
         self.session_id = session_id
         self.info: dict = {}
         self.title: str | None = None
-        self.todos: list = []
+        self.todo_state: dict | None = None  # the session's {todos, revision}: resume snapshot, then todo.updated
         self.revision = None
         self.subscription_id = None
         self.execution_generation = None
@@ -110,6 +107,9 @@ class SessionState:
         self.subscription_id = snapshot.get("subscription_id", self.subscription_id)
         self.execution_generation = snapshot.get("execution_generation", self.execution_generation)
         self.messages = list(snapshot.get("messages") or [])
+        if "todo_state" in snapshot:  # null clears an earlier plan; a missing key (older gateway) keeps it
+            todo_state = snapshot["todo_state"]
+            self.todo_state = dict(todo_state) if isinstance(todo_state, dict) else None
         if isinstance(snapshot.get("pending"), list):
             self.pending = list(snapshot["pending"])
             self.pending_seq += 1  # a (re)attach replays no frames: the idle tick checks this viewer's /queue rows
@@ -131,7 +131,7 @@ class SessionState:
             if payload.get("title"):
                 self.title = payload["title"]
         elif kind == "todo.updated" and isinstance(payload, dict):
-            self.todos = list(payload.get("todos") or [])
+            self.todo_state = {"todos": list(payload.get("todos") or []), "revision": payload.get("revision")}
         elif kind == "session.usage" and isinstance(payload, dict):
             # The gateway's frame carries the flat counters next to a nested TUI ``usage`` view this
             # reader can't map (``session_usage.usage_frame``): the counters win when present.
