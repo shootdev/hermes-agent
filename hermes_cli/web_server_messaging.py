@@ -58,7 +58,7 @@ _PLATFORM_ORDER: tuple[str, ...] = (
     # hermes-dev: qzhuli (Q助理) 是默认消息通道，排第一位。
     "qzhuli", "telegram", "discord", "slack", "mattermost", "matrix", "whatsapp", "signal", "bluebubbles",
     "email", "sms", "dingtalk", "feishu", "google_chat", "wecom", "wecom_callback",
-    "weixin", "qqbot", "yuanbao", "api_server", "webhook",
+    "weixin", "qqbot", "api_server", "webhook",
 )
 
 
