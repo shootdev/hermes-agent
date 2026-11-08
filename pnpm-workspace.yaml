@@ -70,3 +70,6 @@ allowBuilds:
   # apps/desktop/scripts/dev-get-windows.mjs). Keyed by name: the denial holds for every version.
   get-windows: false
   lefthook@2.2.1: true
+  # 本地 qzhuli 定制带来的两个依赖：better-sqlite3 需编译，qzhuli CLI 明确不跑脚本
+  better-sqlite3@12.11.1: true
+  '@qzhuli/qzhuli-cli': false
