@@ -1070,9 +1070,15 @@ class GatewaySlashCommandsMixin(
             return t("gateway.config_save_failed", error=e)
         example = ""
         if new_state:
-            # Show a preview using current agent state if available.
+            # Preview the model the next turn runs: the turn's own resolver (session /model >
+            # channel_overrides > config.yaml); an unresolvable route still previews the config model.
+            try:
+                preview_model, _ = self._resolve_session_agent_runtime(source=event.source, user_config=user_config)
+            except Exception:  # health: allow BLE001 -- a broken route must not break /footer on
+                logger.debug("Footer preview: session runtime unresolvable", exc_info=True)
+                preview_model = _resolve_gateway_model(user_config)
             preview = format_runtime_footer(
-                model=_resolve_gateway_model(user_config) or None, context_tokens=0, context_length=None,
+                model=preview_model or None, context_tokens=0, context_length=None,
                 fields=effective.get("fields") or ["model", "context_pct", "cwd"])
             if preview:
                 example = t("gateway.footer.example_line", preview=preview)
@@ -1199,11 +1205,12 @@ class GatewaySlashCommandsMixin(
             from gateway.approval_actor import answerable_request_ids, refusal_text
             from gateway.slash_access import policy_for_runner_source
             ids, requester = answerable_request_ids(
-                session_key, event.source.user_id, resolve_all=resolve_all,
+                session_key, event.sender_id(), resolve_all=resolve_all,
                 admin_ids=policy_for_runner_source(self, event.source).admin_user_ids)
             return (session_key, refusal_text(requester), []) if requester else (session_key, None, ids)
-        if session_key in self._pending_approvals:
-            self._pending_approvals.pop(session_key)
+        _approval_state = self._peek_session_state(session_key)
+        if _approval_state is not None and _approval_state.persistent.approvals is not None:
+            _approval_state.persistent.approvals = None
             return session_key, t(stale_key), []
         return session_key, t(none_key), []
 
