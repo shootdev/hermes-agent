@@ -171,6 +171,7 @@ models-dev-upstream/
 .cursor/
 .gemini/
 .zed/
+.workbuddy/
 .mcp.json
 opencode.json
 config/mcporter.json
