@@ -872,6 +872,7 @@ function PlatformDetail({
           onEdit={onEdit}
           onTelegramApplied={onTelegramApplied}
           platform={platform}
+          qzhuliBindBotName={qzhuliBindBotName}
           saving={saving}
           scopeProfile={scopeProfile}
         />
@@ -886,6 +887,7 @@ function DirectSetupSections({
   onEdit,
   onTelegramApplied,
   platform,
+  qzhuliBindBotName,
   saving,
   scopeProfile
 }: {
@@ -894,6 +896,7 @@ function DirectSetupSections({
   onEdit: (key: string, value: string) => void
   onTelegramApplied: (result: TelegramOnboardingApplyResponse) => void
   platform: MessagingPlatformInfo
+  qzhuliBindBotName: string
   saving: string | null
   scopeProfile: string | undefined
 }) {
