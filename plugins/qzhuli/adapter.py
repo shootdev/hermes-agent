@@ -22,7 +22,7 @@ import json
 import logging
 import time
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 import httpx
 from websockets.asyncio.client import connect as ws_connect
@@ -42,7 +42,7 @@ logger = logging.getLogger(__name__)
 _QZHULI_CLIENT_HOST = {"release": "client.qzhuli.com", "dev": "test.client.qzhuli.com"}
 _QZHULI_IM_HOST = {"release": "im.qzhuli.com", "dev": "test.im.qzhuli.com"}
 # WS 专用 host（默认与 IM host 相同；测试可分离端口）
-_QZHULI_WS_HOST: Dict[str, str] = {}
+_QZHULI_WS_HOST: dict[str, str] = {}
 # URL scheme（生产 HTTPS/WSS；测试可 monkeypatch 为 http/ws）
 _SCHEME = "https"
 _WS_SCHEME = "wss"
@@ -132,7 +132,7 @@ class QzhuliAdapter(BasePlatformAdapter):
             if task:
                 try:
                     await asyncio.wait_for(asyncio.shield(task), timeout=3.0)
-                except (asyncio.CancelledError, asyncio.TimeoutError):
+                except (TimeoutError, asyncio.CancelledError):
                     pass
         self._ws = None
         self._mark_disconnected()
@@ -204,7 +204,7 @@ class QzhuliAdapter(BasePlatformAdapter):
             "QZHULI_WS_TOKEN": self.ws_token,
         }
         keys = set(updates)
-        lines = env_path.read_text(encoding="utf-8").splitlines() if env_path.exists() else []
+        lines = env_path.read_text(encoding="utf-8-sig").splitlines() if env_path.exists() else []
         kept = [ln for ln in lines if not (ln.strip() and ln.split("=", 1)[0].strip() in keys and not ln.lstrip().startswith("#"))]
         for k, v in updates.items():
             kept.append(f"{k}={v}")
@@ -250,7 +250,7 @@ class QzhuliAdapter(BasePlatformAdapter):
                 open_claw_token = _get_scoped_secret("QZHULI_OPENCLAW_TOKEN") or ""
                 if open_claw_token.strip():
                     protocols = [f"X-OpenClaw-Token.{open_claw_token.strip()}"]
-                kwargs: Dict[str, Any] = {"open_timeout": 15.0, "close_timeout": 5.0, "max_size": 4 * 1024 * 1024}
+                kwargs: dict[str, Any] = {"open_timeout": 15.0, "close_timeout": 5.0, "max_size": 4 * 1024 * 1024}
                 if protocols:
                     kwargs["subprotocols"] = protocols
                 async with ws_connect(self._ws_url(), **kwargs) as ws:
@@ -362,7 +362,7 @@ class QzhuliAdapter(BasePlatformAdapter):
     # ── 发送 ────────────────────────────────────────────────────────────────
 
     async def send(self, chat_id: str, content: str, reply_to: Optional[str] = None,
-                   metadata: Optional[Dict[str, Any]] = None) -> SendResult:
+                   metadata: Optional[dict[str, Any]] = None) -> SendResult:
         conv_id = (chat_id or self.conv_id or "").strip()
         if not conv_id:
             return SendResult(success=False, error="Qzhuli: no conversation id")
@@ -376,13 +376,13 @@ class QzhuliAdapter(BasePlatformAdapter):
     async def send_typing(self, chat_id: str, metadata=None) -> None:
         """Qzhuli 无 typing 指示，no-op。"""
 
-    async def get_chat_info(self, chat_id: str) -> Dict[str, Any]:
+    async def get_chat_info(self, chat_id: str) -> dict[str, Any]:
         return {"name": chat_id, "type": "dm"}
 
     async def _push_message(self, conv_id: str, text: str, role: int = 0) -> None:
         host = _QZHULI_IM_HOST[self.environment]
         url = f"{_SCHEME}://{host}{_PUSH_PATH}"
-        payload: Dict[str, Any] = {"conv_id": conv_id, "content": text, "msg_type": 1, "role": role}
+        payload: dict[str, Any] = {"conv_id": conv_id, "content": text, "msg_type": 1, "role": role}
         if self.sender_cid:
             payload["sender_cid"] = self.sender_cid
         async with httpx.AsyncClient(timeout=_PUSH_TIMEOUT_S) as client:
