@@ -6,6 +6,11 @@ can be bypassed (for example with ``git add -f`` or a non-standard build
 context).  This check is the blocking, executable policy at the CI and image
 publication boundaries.  It intentionally checks the filesystem rather than
 Git's index so a generated archive cannot enter a build after checkout.
+
+The local build caches (``.build/``, ``.cache/``) are skipped: the dependency and
+packaging toolchains download third-party archives into them (dateutil zoneinfo
+bundles, 7zip, icons-bundle), ``.dockerignore`` already keeps both trees out of
+every build context, and a profile export never lands there.
 """
 
 from __future__ import annotations
@@ -15,6 +20,10 @@ import os
 from pathlib import Path
 
 _PROFILE_ARCHIVE_SUFFIXES = (".tar.gz", ".tgz")
+
+# Local build outputs (git- and Docker-ignored), never a profile export destination.
+_LOCAL_BUILD_DIRS = frozenset({".build", ".cache"})
+_SKIPPED_DIRS = frozenset({".git", ".venv", "venv", "node_modules", "__pycache__"}) | _LOCAL_BUILD_DIRS
 
 
 def find_forbidden_profile_archives(root: Path) -> list[Path]:
@@ -28,7 +37,7 @@ def find_forbidden_profile_archives(root: Path) -> list[Path]:
         dirnames[:] = [
             name
             for name in dirnames
-            if name not in {".git", ".venv", "venv", "node_modules", "__pycache__"}
+            if name not in _SKIPPED_DIRS
         ]
         for name in (*dirnames, *filenames):
             if name.casefold().endswith(_PROFILE_ARCHIVE_SUFFIXES):

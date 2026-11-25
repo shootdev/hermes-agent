@@ -55,3 +55,34 @@ def test_nested_profile_archive_is_also_rejected(tmp_path):
 
     assert result.returncode == 1
     assert "fixtures/fixture.tar.gz" in result.stdout
+
+
+def test_local_build_cache_archives_are_skipped(tmp_path):
+    """Tool chains download third-party archives into .build/ and .cache/; those are
+    build inputs, not profile exports, and .dockerignore keeps both trees out of every
+    build context."""
+    for cache in (".build", ".cache"):
+        toolchain = tmp_path / cache / "desktop-inputs" / "packager"
+        toolchain.mkdir(parents=True)
+        (toolchain / "7zip-darwin-arm64.tar.gz").write_bytes(b"third-party toolchain")
+    real_export = tmp_path / ".build-adjacent.tar.gz"
+    real_export.write_bytes(b"a profile export outside the caches")
+
+    result = _run(tmp_path)
+
+    assert result.returncode == 1
+    assert ".build-adjacent.tar.gz" in result.stdout
+    assert "7zip-darwin-arm64.tar.gz" not in result.stdout
+
+
+def test_profile_archive_inside_the_build_caches_is_skipped(tmp_path):
+    """The caches are local build outputs: a file placed there is not published."""
+    for cache in (".build", ".cache"):
+        cache_dir = tmp_path / cache
+        cache_dir.mkdir()
+        (cache_dir / "profile-export.tar.gz").write_bytes(b"inside a local cache")
+
+    result = _run(tmp_path)
+
+    assert result.returncode == 0
+    assert "No profile export archives" in result.stdout
